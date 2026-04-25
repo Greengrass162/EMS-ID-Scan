@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>MSHVFAS Patient Intake</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #007AFF;
+      --blue-light: #E8F2FF;
+      --blue-mid: #4DA3FF;
+      --bg: #F2F6FC;
+      --card: #FFFFFF;
+      --text-primary: #0D1B2A;
+      --text-secondary: #6B7A8D;
+      --divider: #E4EAF2;
+      --success: #34C759;
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      background: var(--bg);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── SCREEN WRAPPER ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      max-width: 430px;
+      margin: 0 auto;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 52px 24px 16px;
+      background: var(--card);
+      border-bottom: 1px solid var(--divider);
+    }
+    .squad-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 4px;
+    }
+    header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+      letter-spacing: -0.3px;
+    }
+
+    /* ── SCAN SCREEN ── */
+    #scan-screen {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .scan-area {
+      position: relative;
+      flex: 1;
+      background: #000;
+    }
+
+    #video {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* viewfinder overlay */
+    .viewfinder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .vf-box {
+      width: 78%;
+      aspect-ratio: 2.1 / 1;
+      border-radius: 14px;
+      position: relative;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.52);
+    }
+    /* corner marks */
+    .vf-box::before, .vf-box::after,
+    .vf-corner-bl, .vf-corner-br {
+      content: '';
+      position: absolute;
+      width: 24px; height: 24px;
+      border-color: #fff;
+      border-style: solid;
+    }
+    .vf-box::before  { top: -2px; left: -2px;  border-width: 3px 0 0 3px; border-radius: 10px 0 0 0; }
+    .vf-box::after   { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-radius: 0 10px 0 0; }
+    .vf-corner-bl    { bottom: -2px; left: -2px;  border-width: 0 0 3px 3px; border-radius: 0 0 0 10px; }
+    .vf-corner-br    { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-radius: 0 0 10px 0; }
+
+    /* scan line animation */
+    .scan-line {
+      position: absolute;
+      left: 4px; right: 4px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--blue), transparent);
+      border-radius: 2px;
+      animation: scanMove 2s ease-in-out infinite;
+      top: 10%;
+    }
+    @keyframes scanMove {
+      0%, 100% { top: 10%; opacity: 0.4; }
+      50% { top: 84%; opacity: 1; }
+    }
+
+    .scan-hint {
+      position: absolute;
+      bottom: 24px;
+      left: 0; right: 0;
+      text-align: center;
+    }
+    .scan-hint span {
+      display: inline-block;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 18px;
+      border-radius: 20px;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── RESULT SCREEN ── */
+    #result-screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 20px 16px 36px;
+      gap: 14px;
+    }
+
+    /* success banner */
+    .success-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #EDFAF2;
+      border: 1px solid #A8EDBC;
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+    }
+    .success-icon {
+      width: 28px; height: 28px;
+      background: var(--success);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .success-icon svg { width: 14px; height: 14px; }
+    .success-banner p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1A6633;
+    }
+
+    /* info card */
+    .info-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    }
+    .card-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding: 14px 18px 6px;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      padding: 13px 18px;
+      border-top: 1px solid var(--divider);
+      gap: 12px;
+    }
+    .info-row:first-of-type { border-top: none; }
+    .row-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      width: 76px;
+      flex-shrink: 0;
+    }
+    .row-value {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      letter-spacing: -0.1px;
+      flex: 1;
+    }
+    /* age badge */
+    .age-badge {
+      display: inline-flex;
+      align-items: center;
+      background: var(--blue-light);
+      color: var(--blue);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 8px;
+    }
+
+    /* ── BUTTONS ── */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: -0.1px;
+    }
+    .btn:active { opacity: 0.75; transform: scale(0.98); }
+    .btn-primary {
+      background: var(--blue);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--blue);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px var(--divider);
+    }
+    .btn-ghost {
+      background: #F0F4FA;
+      color: var(--text-secondary);
+    }
+    .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* ── OFF-SCREEN RECEIPT (unchanged logic) ── */
+    #receipt {
+      position: absolute;
+      top: -9999px; left: -9999px;
+      width: 58mm;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+      background: #fff;
+    }
+    #receipt h2 { font-size: 1em; margin: 0 0 10px; text-align: center; }
+    #receipt p  { font-size: 0.9em; margin: 5px 0; }
+  </style>
+
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="squad-label">Patient Intake</div>
+    <h1>EMS ID Scan</h1>
+  </header>
+
+  <!-- SCAN SCREEN -->
+  <div id="scan-screen" style="display:flex;">
+    <div class="scan-area">
+      <video id="video" playsinline></video>
+      <div class="viewfinder">
+        <div class="vf-box">
+          <span class="vf-corner-bl"></span>
+          <span class="vf-corner-br"></span>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+      <div class="scan-hint"><span>Point at the barcode on the back of the ID</span></div>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="result-screen">
+
+    <div class="success-banner">
+      <div class="success-icon">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <p>ID scanned successfully</p>
+    </div>
+
+    <div class="info-card">
+      <div class="card-section-title">Identity</div>
+      <div class="info-row">
+        <span class="row-label">First Name</span>
+        <span class="row-value" id="firstName"></span>
+      </div>
+      <div class="info-row">
+        <span class="row-label">Last Name</span>
+        <span class="row-value" id="lastName"></span>
+      </div>
+      <div class="info-row">
+        <span class="row-label">Sex</span>
+        <span class="row-value" id="sex"></span>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="card-section-title">Date of Birth</div>
+      <div class="info-row">
+        <span class="row-label">DOB</span>
+        <span class="row-value" id="dob"></span>
+      </div>
+      <div class="info-row">
+        <span class="row-label">Age</span>
+        <span class="row-value"><span class="age-badge" id="age"></span></span>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="card-section-title">Address</div>
+      <div class="info-row">
+        <span class="row-label">Address</span>
+        <span class="row-value" id="address"></span>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" id="shareButton">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        Share / Save as Photo
+      </button>
+      <button class="btn btn-secondary" id="txtButton">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Export as TXT
+      </button>
+      <button class="btn btn-ghost" id="resetButton">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        Scan New ID
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- off-screen receipt for html2canvas -->
+<div id="receipt"></div>
+
+<script>
+  function parseBarcode(rawData) {
+    rawData = rawData.replace(/\r/g, '');
+    let lines = rawData.split('\n');
+    let fields = {};
+    lines.forEach(function(line) {
+      line = line.trim();
+      if (line.match(/^D[A-Z]{2}/)) {
+        let code = line.substr(0, 3);
+        let value = line.substr(3).trim();
+        if (!(code in fields)) fields[code] = value;
+      }
+    });
+
+    let data = {};
+    data.firstName = fields["DAC"] || "Unknown";
+    data.lastName  = fields["DCS"] || "Unknown";
+
+    let dobStr = fields["DBB"] || "Unknown";
+    if (dobStr !== "Unknown" && dobStr.length >= 8) {
+      let month = dobStr.substr(0,2), day = dobStr.substr(2,2), year = dobStr.substr(4,4);
+      data.dob = `${month}/${day}/${year}`;
+      let dobDate = new Date(year, month - 1, day);
+      let today = new Date();
+      let age = today.getFullYear() - dobDate.getFullYear();
+      if (today < new Date(today.getFullYear(), dobDate.getMonth(), dobDate.getDate())) age--;
+      data.age = age;
+    } else {
+      data.dob = "Unknown";
+      data.age = "Unknown";
+    }
+
+    let sexCode = fields["DBC"] || "Unknown";
+    data.sex = (sexCode === "1") ? "Male" : (sexCode === "2") ? "Female" : "Unknown";
+
+    let street = fields["DAG"] || "Unknown";
+    let city   = fields["DAI"] || "Unknown";
+    let state  = fields["DAJ"] || "Unknown";
+    let zipRaw = fields["DAK"] || "Unknown";
+    let zip = zipRaw;
+    if (zipRaw !== "Unknown" && zipRaw.length === 9) zip = zipRaw.substr(0,5) + "-" + zipRaw.substr(5,4);
+    data.address = `${street}, ${city}, ${state} ${zip}`;
+
+    return data;
+  }
+
+  window.addEventListener('load', function () {
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.PDF_417]);
+    const codeReader = new ZXing.BrowserMultiFormatReader(hints);
+    const videoElement   = document.getElementById('video');
+    const scanScreen     = document.getElementById('scan-screen');
+    const resultScreen   = document.getElementById('result-screen');
+    const resetButton    = document.getElementById('resetButton');
+    const shareButton    = document.getElementById('shareButton');
+    const txtButton      = document.getElementById('txtButton');
+    let currentData = null;
+    let scanned = false;
+
+    function displayData(data) {
+      document.getElementById('firstName').textContent = data.firstName;
+      document.getElementById('lastName').textContent  = data.lastName;
+      document.getElementById('age').textContent       = data.age;
+      document.getElementById('sex').textContent       = data.sex;
+      document.getElementById('dob').textContent       = data.dob;
+      document.getElementById('address').textContent   = data.address;
+    }
+
+    function startScanning() {
+      scanned = false;
+      codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+        if (result && !scanned) {
+          scanned = true;
+          codeReader.reset();
+          const data = parseBarcode(result.text);
+          currentData = data;
+          scanScreen.style.display = 'none';
+          resultScreen.style.display = 'flex';
+          displayData(data);
+        }
+        if (err && !(err instanceof ZXing.NotFoundException)) console.error(err);
+      });
+    }
+
+    startScanning();
+
+    resetButton.addEventListener('click', function () {
+      resultScreen.style.display = 'none';
+      scanScreen.style.display = 'flex';
+      codeReader.reset();
+      setTimeout(startScanning, 300);
+    });
+
+    function shareFile(file, fallbackFilename) {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: "Patient Info", text: "Millburn Short Hills Volunteer First Aid Squad Patient Information" })
+          .then(() => console.log("Share successful"))
+          .catch(error => console.error("Error sharing", error));
+      } else {
+        let link = document.createElement('a');
+        link.download = fallbackFilename;
+        link.href = URL.createObjectURL(file);
+        link.click();
+      }
+    }
+
+    shareButton.addEventListener('click', function () {
+      if (!currentData) { alert("No data to share. Please scan an ID first."); return; }
+      let receiptHTML = `<h2>Millburn Short Hills Volunteer First Aid Squad<br>Patient Information</h2>`;
+      receiptHTML += `<p>First Name: *${currentData.firstName}*</p>`;
+      receiptHTML += `<p>Last Name: *${currentData.lastName}*</p>`;
+      receiptHTML += `<p>Age: *${currentData.age}*</p>`;
+      receiptHTML += `<p>Sex: *${currentData.sex}*</p>`;
+      receiptHTML += `<p>DOB: *${currentData.dob}*</p>`;
+      receiptHTML += `<p>Address: *${currentData.address}*</p>`;
+      let receiptElement = document.getElementById('receipt');
+      receiptElement.innerHTML = receiptHTML;
+      setTimeout(function () {
+        html2canvas(receiptElement, { scale: 2 }).then(function (canvas) {
+          canvas.toBlob(function (blob) {
+            let file = new File([blob], "patient_info.jpeg", { type: "image/jpeg" });
+            shareFile(file, "patient_info.jpeg");
+          }, 'image/jpeg', 0.98);
+        });
+      }, 500);
+    });
+
+    txtButton.addEventListener('click', function () {
+      if (!currentData) { alert("No data to export. Please scan an ID first."); return; }
+      let txtContent = "Millburn Short Hills Volunteer First Aid Squad Patient Information\n\n" +
+                       "First Name: *" + currentData.firstName + "*\n" +
+                       "Last Name: *" + currentData.lastName + "*\n" +
+                       "Age: *" + currentData.age + "*\n" +
+                       "Sex: *" + currentData.sex + "*\n" +
+                       "DOB: *" + currentData.dob + "*\n" +
+                       "Address: *" + currentData.address + "*\n";
+      let blob = new Blob([txtContent], { type: "text/plain" });
+      let file = new File([blob], "patient_info.txt", { type: "text/plain" });
+      shareFile(file, "patient_info.txt");
+    });
+  });
+</script>
+</body>
+</html>
